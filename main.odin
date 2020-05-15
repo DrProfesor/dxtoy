@@ -106,14 +106,14 @@ main :: proc() {
     ctxt.PSSetShader(ctxt, PS, nil, 0);
 
 	vertex_buffer_data: dx.D3D11_SUBRESOURCE_DATA;
-	vertex_buffer_data.pSysMem = &triangle_verts;
+	vertex_buffer_data.pSysMem = &triangle_verts[0];
 
 	triangle_vert_buffer: ^dx.ID3D11Buffer;
 	device.CreateBuffer(device, &vertex_buffer_desc, &vertex_buffer_data, &triangle_vert_buffer);
 
 	stride : u32 = size_of(Vertex);
 	offset : u32 = 0;
-	ctxt.IASetVertexBuffers(ctxt, 0,1,&triangle_vert_buffer, &stride, &offset);
+	ctxt.IASetVertexBuffers(ctxt, 0, 1, &triangle_vert_buffer, &stride, &offset);
 
 	device.CreateInputLayout(device, &layout[0], cast(u32) len(layout), VS_Buffer.GetBufferPointer(VS_Buffer), VS_Buffer.GetBufferSize(VS_Buffer), &vert_layout);
 
@@ -125,6 +125,7 @@ main :: proc() {
 	viewport.TopLeftY = 0;
 	viewport.Width = 1920;
 	viewport.Height = 1080;
+	viewport.MaxDepth = 1;
 
 	ctxt.RSSetViewports(ctxt, 1, &viewport);
 
@@ -135,20 +136,17 @@ main :: proc() {
 	        win32.dispatch_message_a(&message);
 	    }
 
-	    ctxt.ClearRenderTargetView(ctxt, render_target_view, {0.1,0.5,0.8,1});
-
 		ctxt.OMSetRenderTargets(ctxt, 1, &render_target_view, nil);
+	    ctxt.ClearRenderTargetView(ctxt, render_target_view, {0.1,0.5,0.8,1});
 	    
 	    ctxt.Draw(ctxt, 3, 0);
 
 	    swap_chain.Present(swap_chain, 0, 0);
-
-		win32.swap_buffers(window.platform_data.device_context);
 	}
 }
 
 Vertex :: struct {
-	pos: [4]f32,
+	pos: [3]f32,
 	// colour: [4]f32,
 }
 
