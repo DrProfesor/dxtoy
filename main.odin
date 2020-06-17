@@ -8,6 +8,7 @@ import dx "shared:odin-dx"
 logln :: dx.logln;
 
 main :: proc() {
+	dx.g_context = context;
 	window, ok := dx.create_window("Main", 1920, 1080);
 	dx.main_window = window;
 	
@@ -25,24 +26,24 @@ main :: proc() {
 	    desc.BufferDesc.Height = 1080;
 	    desc.BufferDesc.RefreshRate.Numerator = 60;
 	    desc.BufferDesc.RefreshRate.Denominator = 1;
-	    desc.BufferDesc.Format = .DXGI_FORMAT_B8G8R8A8_UNORM;
-	    desc.BufferDesc.ScanlineOrdering = .DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	    desc.BufferDesc.Scaling = .DXGI_MODE_SCALING_UNSPECIFIED;
+	    desc.BufferDesc.Format = dx.DXGI_FORMAT_B8G8R8A8_UNORM;
+	    desc.BufferDesc.ScanlineOrdering = dx.DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	    desc.BufferDesc.Scaling = dx.DXGI_MODE_SCALING_UNSPECIFIED;
 	    desc.SampleDesc.Count = 1;
 	    desc.SampleDesc.Quality = 0;
 	    desc.BufferUsage = .DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	    desc.BufferCount = 2;
 	    desc.OutputWindow = window.platform_data.window_handle;
 	    desc.Windowed = true;
-	    desc.SwapEffect = .DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	    desc.Flags = .DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	    desc.SwapEffect = dx.DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	    desc.Flags = dx.DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 		feature_level : dx.D3D_FEATURE_LEVEL;
-		res := cast(dx.Create_Device_Response) dx.create_device_and_swapchain(
+		res := dx.D3D11CreateDeviceAndSwapChain(
 			nil,
-			.D3D_DRIVER_TYPE_HARDWARE, 
+			dx.D3D_DRIVER_TYPE_HARDWARE, 
 			dx.HMODULE(nil), 
-			.D3D11_CREATE_DEVICE_DEBUG, // flags
+			dx.D3D11_CREATE_DEVICE_DEBUG, // flags
 			nil,
 			0,
 			7,
@@ -62,14 +63,14 @@ main :: proc() {
 	}
 
 	layout := []dx.D3D11_INPUT_ELEMENT_DESC{
-		{"POSITION", 0, .DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, .D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"POSITION", 0, dx.DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, dx.D3D11_INPUT_PER_VERTEX_DATA, 0},
 		// {"COLOUR", 0, .DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, .D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
 	vertex_buffer_desc := dx.D3D11_BUFFER_DESC {
 		size_of(Vertex) * 3, 
-		.D3D11_USAGE_DEFAULT,
-		.D3D11_BIND_VERTEX_BUFFER,
+		dx.D3D11_USAGE_DEFAULT,
+		dx.D3D11_BIND_VERTEX_BUFFER,
 		0,
 		0,
 		0,
@@ -96,8 +97,8 @@ main :: proc() {
 	entry_ps : cstring = "PS\x00";
 	ver_vs : cstring = "vs_4_0\x00";
 	ver_ps : cstring = "ps_4_0\x00";
-	hs = dx.compile_from_file(f_name, nil, nil, entry_vs, ver_vs, 1, 0, &VS_Buffer, &err);
-    hs = dx.compile_from_file(f_name, nil, nil, entry_ps, ver_ps, 1, 0, &PS_Buffer, nil);
+	hs = dx.D3DCompileFromFile(f_name, nil, nil, entry_vs, ver_vs, 1, 0, &VS_Buffer, &err);
+    hs = dx.D3DCompileFromFile(f_name, nil, nil, entry_ps, ver_ps, 1, 0, &PS_Buffer, nil);
 
     device.CreateVertexShader(device, VS_Buffer.GetBufferPointer(VS_Buffer), VS_Buffer.GetBufferSize(VS_Buffer), nil, &VS);
     device.CreatePixelShader(device, PS_Buffer.GetBufferPointer(PS_Buffer), PS_Buffer.GetBufferSize(PS_Buffer), nil, &PS);
@@ -118,7 +119,7 @@ main :: proc() {
 	device.CreateInputLayout(device, &layout[0], cast(u32) len(layout), VS_Buffer.GetBufferPointer(VS_Buffer), VS_Buffer.GetBufferSize(VS_Buffer), &vert_layout);
 
 	ctxt.IASetInputLayout(ctxt, vert_layout);
-	ctxt.IASetPrimitiveTopology(ctxt, .D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ctxt.IASetPrimitiveTopology(ctxt, dx.D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	viewport: dx.D3D11_VIEWPORT;
 	viewport.TopLeftX = 0;
