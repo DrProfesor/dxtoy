@@ -3,14 +3,29 @@ package main
 import "core:sys/win32"
 import "core:strings"
 
-import dx "shared:odin-dx"
+import dx "odin-dx"
 
 logln :: dx.logln;
 
+Vertex :: struct {
+	pos: [4]f32,
+	color: [4]f32,
+}
+
+triangle_verts := []Vertex{
+	{{0, 0.5, 0.5, 1.0}, {1.0, 0.0, 0.0, 1.0}},
+	{{0.5, -0.5, 0.5, 1.0}, {0.0, 1.0, 0.0, 1.0}},
+	{{-0.5,-0.5,0.5, 1.0}, {0.0, 0.0, 1.0, 1.0}},
+};
+
+
 main :: proc() {
-	dx.g_context = context;
-	window, ok := dx.create_window("Main", 1920, 1080);
-	dx.main_window = window;
+
+	d3d_module := win32.load_library_a("d3d12.dll");
+	assert(d3d_module != nil);
+    defer win32.free_library(d3d_module);
+
+	window := dx.create_window("Main", 1920, 1080);
 	
 	swap_chain        : ^dx.IDXGISwapChain;
 	desc              : dx.DXGI_SWAP_CHAIN_DESC;
@@ -33,7 +48,7 @@ main :: proc() {
 	    desc.SampleDesc.Quality = 0;
 	    desc.BufferUsage = .DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	    desc.BufferCount = 2;
-	    desc.OutputWindow = window.platform_data.window_handle;
+	    desc.OutputWindow = window;
 	    desc.Windowed = true;
 	    desc.SwapEffect = dx.DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	    desc.Flags = dx.DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -63,8 +78,8 @@ main :: proc() {
 	}
 
 	layout := []dx.D3D11_INPUT_ELEMENT_DESC{
-		{"POSITION", 0, dx.DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, dx.D3D11_INPUT_PER_VERTEX_DATA, 0},
-		// {"COLOUR", 0, .DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, .D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{SemanticName = "POSITION", SemanticIndex = 0, Format = dx.DXGI_FORMAT_R32G32B32A32_FLOAT, InputSlot = 0,  AlignedByteOffset = 0, InputSlotClass = dx.D3D11_INPUT_PER_VERTEX_DATA, InstanceDataStepRate = 0},
+		{SemanticName = "COLOR", SemanticIndex = 0, Format = dx.DXGI_FORMAT_R32G32B32A32_FLOAT, InputSlot = 0,  AlignedByteOffset = 16, InputSlotClass = dx.D3D11_INPUT_PER_VERTEX_DATA, InstanceDataStepRate = 0},
 	};
 
 	vertex_buffer_desc := dx.D3D11_BUFFER_DESC {
@@ -76,31 +91,29 @@ main :: proc() {
 		0,
 	};
 
-	triangle_verts := []Vertex{
-		{{0, 0.5, 0.5}},
-		{{0.5, -0.5, 0.5}},
-		{{-0.5,-0.5,0.5}},
-	};
-
-	VS: ^dx.ID3D11VertexShader;
-	PS: ^dx.ID3D11PixelShader;
-	VS_Buffer: ^dx.ID3D10Blob;
-	PS_Buffer: ^dx.ID3D10Blob;
-
 	vert_layout: ^dx.ID3D11InputLayout;
 
-	hs: dx.HRESULT;
+	vs_file_name := win32.utf8_to_wstring("color.vs\x00");
+	ps_file_name := win32.utf8_to_wstring("color.ps\x00");
+	entry : cstring = "main";
+	ver_vs : cstring = "vs_5_0";
+	ver_ps : cstring = "ps_5_0";
 
 	err: ^dx.ID3D10Blob;
-	f_name := win32.utf8_to_wstring("Effects.fx\x00");
-	entry_vs : cstring = "VS\x00";
-	entry_ps : cstring = "PS\x00";
-	ver_vs : cstring = "vs_4_0\x00";
-	ver_ps : cstring = "ps_4_0\x00";
-	hs = dx.D3DCompileFromFile(f_name, nil, nil, entry_vs, ver_vs, 1, 0, &VS_Buffer, &err);
-    hs = dx.D3DCompileFromFile(f_name, nil, nil, entry_ps, ver_ps, 1, 0, &PS_Buffer, nil);
 
+	VS_Buffer: ^dx.ID3D10Blob;
+	vs_success := dx.D3DCompileFromFile(vs_file_name, nil, nil, entry, ver_vs, 1, 0, &VS_Buffer, &err);
+	assert(vs_success == dx.S_OK);
+
+	PS_Buffer: ^dx.ID3D10Blob;
+    ps_success := dx.D3DCompileFromFile(ps_file_name, nil, nil, entry, ver_ps, 1, 0, &PS_Buffer, &err);
+	assert(ps_success == dx.S_OK);
+
+
+	VS: ^dx.ID3D11VertexShader;
     device.CreateVertexShader(device, VS_Buffer.GetBufferPointer(VS_Buffer), VS_Buffer.GetBufferSize(VS_Buffer), nil, &VS);
+
+	PS: ^dx.ID3D11PixelShader;
     device.CreatePixelShader(device, PS_Buffer.GetBufferPointer(PS_Buffer), PS_Buffer.GetBufferSize(PS_Buffer), nil, &PS);
 
     ctxt.VSSetShader(ctxt, VS, nil, 0);
@@ -130,9 +143,17 @@ main :: proc() {
 
 	ctxt.RSSetViewports(ctxt, 1, &viewport);
 
-	update_loop: for {
+	exit := false;
+
+	for !exit {
+
 		message: win32.Msg;
 	    for win32.peek_message_a(&message, nil, 0, 0, win32.PM_REMOVE) {
+
+	    	if(message.message == win32.WM_QUIT) {
+	    		exit = true;
+	    	}
+
 	        win32.translate_message(&message);
 	        win32.dispatch_message_a(&message);
 	    }
@@ -146,8 +167,4 @@ main :: proc() {
 	}
 }
 
-Vertex :: struct {
-	pos: [3]f32,
-	// colour: [4]f32,
-}
 
